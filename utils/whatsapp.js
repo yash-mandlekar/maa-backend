@@ -1,6 +1,7 @@
 const qrcode = require("qrcode");
 const os = require("os");
 const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
+const puppeteer = require("puppeteer");
 
 let whatsappClient;
 let isInitializing = false;
@@ -10,17 +11,36 @@ let currentQRCode = null;
 let connectionStatus = "disconnected"; // "disconnected", "connecting", "qr_ready", "connected"
 const MAX_RETRIES = 3;
 
-// Determine system Chrome path manually (cross-platform)
-function getChromePath() {
+// Check if running in production/cloud environment
+const isProduction =
+  process.env.NODE_ENV === "production" || process.env.RENDER === "true";
+
+// Get Chrome/Chromium executable path
+async function getChromePath() {
   const platform = os.platform();
 
+  // In production (Render, etc.), use Puppeteer's bundled Chromium
+  if (isProduction || platform === "linux") {
+    try {
+      const browser = await puppeteer.launch({ headless: true });
+      const executablePath = browser.process().spawnfile;
+      await browser.close();
+      console.log("✅ Using Puppeteer bundled Chromium:", executablePath);
+      return executablePath;
+    } catch (error) {
+      console.log(
+        "⚠️ Puppeteer bundled Chromium not found, trying system Chrome"
+      );
+      return "/usr/bin/google-chrome";
+    }
+  }
+
+  // Local development - use system Chrome
   switch (platform) {
     case "darwin":
       return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
     case "win32":
       return "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-    case "linux":
-      return "/usr/bin/google-chrome";
     default:
       throw new Error("❌ Unsupported OS. Please install Google Chrome.");
   }
@@ -33,7 +53,7 @@ async function startWhatsAppClient() {
   currentQRCode = null;
 
   try {
-    const chromePath = getChromePath();
+    const chromePath = await getChromePath();
 
     whatsappClient = new Client({
       authStrategy: new LocalAuth({
