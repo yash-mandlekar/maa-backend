@@ -74,6 +74,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🌐 API Base URL: http://localhost:${PORT}/api`);
+  console.log(`Cors origin: ${process.env.CORS_ORIGIN}`);
 });
 
 // Handle unhandled promise rejections
