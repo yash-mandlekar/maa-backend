@@ -2,7 +2,7 @@ services:
   - type: web
     name: maa-backend
     runtime: node
-    buildCommand: npm install && npm run build
+    buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -11,5 +11,5 @@ services:
         value: true
       - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
         value: false
-      - key: PUPPETEER_EXECUTABLE_PATH
-        sync: false
+      - key: PUPPETEER_CACHE_DIR
+        value: /opt/render/project/src/.cache/puppeteer

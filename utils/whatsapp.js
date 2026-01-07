@@ -19,31 +19,56 @@ const isProduction =
 async function getChromePath() {
   const platform = os.platform();
 
-  // In production (Render, etc.), use Puppeteer's bundled Chromium
-  if (isProduction || platform === "linux") {
-    try {
-      const browser = await puppeteer.launch({ headless: true });
-      const executablePath = browser.process().spawnfile;
-      await browser.close();
-      console.log("✅ Using Puppeteer bundled Chromium:", executablePath);
-      return executablePath;
-    } catch (error) {
-      console.log(
-        "⚠️ Puppeteer bundled Chromium not found, trying system Chrome"
-      );
-      return "/usr/bin/google-chrome";
+  // First, try to use Puppeteer's bundled Chromium (works everywhere including Render)
+  try {
+    // puppeteer.executablePath() returns the path to bundled Chromium
+    const bundledPath = puppeteer.executablePath();
+    if (bundledPath) {
+      console.log("✅ Using Puppeteer bundled Chromium:", bundledPath);
+      return bundledPath;
+    }
+  } catch (error) {
+    console.log(
+      "⚠️ Could not get Puppeteer bundled Chromium path:",
+      error.message
+    );
+  }
+
+  // Fallback: For local development on macOS/Windows, use system Chrome
+  if (!isProduction) {
+    switch (platform) {
+      case "darwin":
+        console.log("✅ Using system Chrome (macOS)");
+        return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+      case "win32":
+        console.log("✅ Using system Chrome (Windows)");
+        return "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
     }
   }
 
-  // Local development - use system Chrome
-  switch (platform) {
-    case "darwin":
-      return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-    case "win32":
-      return "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-    default:
-      throw new Error("❌ Unsupported OS. Please install Google Chrome.");
+  // Last resort: try common Linux paths
+  const linuxPaths = [
+    "/usr/bin/chromium-browser",
+    "/usr/bin/chromium",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/google-chrome",
+  ];
+
+  for (const chromePath of linuxPaths) {
+    try {
+      const fs = require("fs");
+      if (fs.existsSync(chromePath)) {
+        console.log("✅ Found Chrome at:", chromePath);
+        return chromePath;
+      }
+    } catch (e) {
+      // Continue checking
+    }
   }
+
+  throw new Error(
+    "❌ No Chrome/Chromium executable found. Please ensure Puppeteer is installed correctly."
+  );
 }
 
 async function startWhatsAppClient() {
