@@ -66,7 +66,24 @@ const getFeeById = async (req, res, next) => {
 // @access  Private
 const createFee = async (req, res, next) => {
   try {
-    const { student: studentId, studentModelType, payment } = req.body;
+    let { student: studentId, studentModelType, payment } = req.body;
+
+    // Check if studentModelType is missing and infer it
+    if (!studentModelType && studentId) {
+      // Check in Student model first
+      if (await Student.exists({ _id: studentId })) {
+        studentModelType = "Student";
+      }
+      // If not found, check in Admission model
+      else if (await Admission.exists({ _id: studentId })) {
+        studentModelType = "Admission";
+      }
+
+      // Update req.body if we found a type
+      if (studentModelType) {
+        req.body.studentModelType = studentModelType;
+      }
+    }
 
     // Create the fee record
     const fee = await Fees.create(req.body);
