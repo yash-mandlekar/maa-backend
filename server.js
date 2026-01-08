@@ -24,7 +24,7 @@ const app = express();
 connectDB();
 
 // Initialize WhatsApp client
-startWhatsAppClient();
+// startWhatsAppClient();
 
 // Middleware
 app.use(
