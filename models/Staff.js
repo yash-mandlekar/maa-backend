@@ -6,7 +6,18 @@ const staffSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    secondName: {
+    lastName: {
+      type: String,
+    },
+    staffId: {
+      type: String,
+    },
+    role: {
+      type: String,
+      enum: ["staff", "teacher", "admin", "accountant"],
+      default: "staff",
+    },
+    department: {
       type: String,
     },
     gender: {
