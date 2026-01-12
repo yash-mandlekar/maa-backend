@@ -10,7 +10,14 @@ const {
 // @access  Private
 const getAdmissions = async (req, res, next) => {
   try {
-    const { name, contactNumber, page = 1, limit = 10 } = req.query;
+    const {
+      name,
+      contactNumber,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 10,
+    } = req.query;
     const skip = (page - 1) * limit;
 
     let query = {};
@@ -28,6 +35,20 @@ const getAdmissions = async (req, res, next) => {
         delete query.$or;
       } else {
         query.contactNumber = contactNumber;
+      }
+    }
+
+    // Date range filter on joiningDate
+    if (startDate || endDate) {
+      query.joiningDate = {};
+      if (startDate) {
+        query.joiningDate.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        // Set end date to end of day
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.joiningDate.$lte = end;
       }
     }
 

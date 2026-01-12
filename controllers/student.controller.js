@@ -10,7 +10,14 @@ const {
 // @access  Private
 const getStudents = async (req, res, next) => {
   try {
-    const { name, contactNumber, page = 1, limit = 10 } = req.query;
+    const {
+      name,
+      contactNumber,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 10,
+    } = req.query;
     const skip = (page - 1) * limit;
 
     let query = {};
@@ -28,6 +35,20 @@ const getStudents = async (req, res, next) => {
         delete query.$or;
       } else {
         query.contactNumber = contactNumber;
+      }
+    }
+
+    // Date range filter on joiningDate
+    if (startDate || endDate) {
+      query.joiningDate = {};
+      if (startDate) {
+        query.joiningDate.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        // Set end date to end of day
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.joiningDate.$lte = end;
       }
     }
 
@@ -223,6 +244,67 @@ const getOverdueStudents = async (req, res, next) => {
   }
 };
 
+// @desc    Search students and admissions combined (for fee collection)
+// @route   GET /api/students/search
+// @access  Private
+const searchStudentsAndAdmissions = async (req, res, next) => {
+  try {
+    const Admission = require("../models/Admission");
+    const { q } = req.query;
+
+    if (!q || q.trim().length < 2) {
+      return successResponse(res, 200, "Search results", []);
+    }
+
+    const searchRegex = new RegExp(q.trim(), "i");
+    const isNumber = !isNaN(q.trim());
+
+    // Build query for both collections
+    let query = {
+      $or: [{ firstName: searchRegex }, { lastName: searchRegex }],
+    };
+
+    // If the query looks like a contact number, also search by contact
+    if (isNumber) {
+      query.$or.push({ contactNumber: parseInt(q.trim()) });
+    }
+
+    // Search both students and admissions in parallel
+    const [students, admissions] = await Promise.all([
+      Student.find(query).populate("course").limit(10).lean(),
+      Admission.find(query).populate("course").limit(10).lean(),
+    ]);
+
+    // Format results with type indicator
+    const results = [
+      ...students.map((s) => ({
+        _id: s._id,
+        firstName: s.firstName,
+        lastName: s.lastName,
+        contactNumber: s.contactNumber,
+        course: s.course,
+        type: "student",
+        displayName: `${s.firstName} ${s.lastName}`,
+        courseName: s.course?.courseName || "N/A",
+      })),
+      ...admissions.map((a) => ({
+        _id: a._id,
+        firstName: a.firstName,
+        lastName: a.lastName,
+        contactNumber: a.contactNumber,
+        course: a.course,
+        type: "admission",
+        displayName: `${a.firstName} ${a.lastName}`,
+        courseName: a.course?.courseName || "N/A",
+      })),
+    ];
+
+    return successResponse(res, 200, "Search results", results);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStudents,
   getStudentById,
@@ -230,4 +312,5 @@ module.exports = {
   updateStudent,
   deleteStudent,
   getOverdueStudents,
+  searchStudentsAndAdmissions,
 };

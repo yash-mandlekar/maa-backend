@@ -25,6 +25,7 @@ const {
   updateStudent, // Update an existing student
   deleteStudent, // Delete a student
   getOverdueStudents, // Get students with overdue fees
+  searchStudentsAndAdmissions, // Search students and admissions combined
 } = require("../controllers/student.controller");
 
 /**
@@ -49,6 +50,16 @@ router.use(protect);
  * - session: Filter by academic session (e.g., "2023-2024")
  */
 router.route("/").get(getStudents).post(createStudent);
+
+/**
+ * Search students and admissions route
+ *
+ * GET /api/students/search - Search students and admissions by name or contact
+ *
+ * Query parameters:
+ * - q: Search query (name or contact number, minimum 2 characters)
+ */
+router.get("/search", searchStudentsAndAdmissions);
 
 /**
  * Overdue students route
