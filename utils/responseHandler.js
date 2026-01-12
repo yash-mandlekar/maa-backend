@@ -37,6 +37,10 @@ const paginatedResponse = (res, statusCode, message, data, pagination) => {
       totalPages: pagination.totalPages,
       totalItems: pagination.totalItems,
       itemsPerPage: pagination.itemsPerPage,
+      hasNextPage:
+        pagination.hasNextPage ??
+        pagination.currentPage < pagination.totalPages,
+      hasPrevPage: pagination.hasPrevPage ?? pagination.currentPage > 1,
     },
   });
 };

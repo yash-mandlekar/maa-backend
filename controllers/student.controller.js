@@ -170,6 +170,7 @@ const deleteStudent = async (req, res, next) => {
 const getOverdueStudents = async (req, res, next) => {
   try {
     const Admission = require("../models/Admission");
+    const { page = 1, limit = 10 } = req.query;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -233,12 +234,27 @@ const getOverdueStudents = async (req, res, next) => {
       (a, b) => b.daysOverdue - a.daysOverdue
     );
 
-    return successResponse(
-      res,
-      200,
-      "Overdue students retrieved successfully",
-      allOverdue
-    );
+    // Pagination
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const total = allOverdue.length;
+    const totalPages = Math.ceil(total / limitNum);
+    const skip = (pageNum - 1) * limitNum;
+    const paginatedData = allOverdue.slice(skip, skip + limitNum);
+
+    return res.status(200).json({
+      success: true,
+      message: "Overdue students retrieved successfully",
+      data: paginatedData,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limitNum,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1,
+      },
+    });
   } catch (error) {
     next(error);
   }

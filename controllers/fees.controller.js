@@ -1,7 +1,11 @@
 const Fees = require("../models/Fees");
 const Student = require("../models/Student");
 const Admission = require("../models/Admission");
-const { successResponse, errorResponse } = require("../utils/responseHandler");
+const {
+  successResponse,
+  errorResponse,
+  paginatedResponse,
+} = require("../utils/responseHandler");
 const { buildPDF } = require("../utils/pdfGenerator");
 const {
   getWhatsAppClient,
@@ -10,12 +14,12 @@ const {
 } = require("../utils/whatsapp");
 const { WritableStreamBuffer } = require("stream-buffers");
 
-// @desc    Get all fees with filters
+// @desc    Get all fees with filters and pagination
 // @route   GET /api/fees
 // @access  Private
 const getAllFees = async (req, res, next) => {
   try {
-    const { startDate, endDate, studentId } = req.query;
+    const { startDate, endDate, studentId, page = 1, limit = 10 } = req.query;
     let query = {};
 
     if (studentId) {
@@ -25,17 +29,39 @@ const getAllFees = async (req, res, next) => {
     if (startDate || endDate) {
       query.payDate = {};
       if (startDate) query.payDate.$gte = new Date(startDate);
-      if (endDate) query.payDate.$lte = new Date(endDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.payDate.$lte = end;
+      }
     }
 
-    const fees = await Fees.find(query)
-      .populate({
-        path: "student",
-        populate: { path: "course" },
-      })
-      .sort({ payDate: -1 });
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
 
-    return successResponse(res, 200, "Fees retrieved successfully", fees);
+    const [fees, total] = await Promise.all([
+      Fees.find(query)
+        .populate({
+          path: "student",
+          populate: { path: "course" },
+        })
+        .sort({ payDate: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      Fees.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    return paginatedResponse(res, 200, "Fees retrieved successfully", fees, {
+      currentPage: pageNum,
+      totalPages,
+      totalItems: total,
+      itemsPerPage: limitNum,
+      hasNextPage: pageNum < totalPages,
+      hasPrevPage: pageNum > 1,
+    });
   } catch (error) {
     next(error);
   }
